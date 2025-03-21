@@ -1,0 +1,11 @@
+<ruleset name="MyProject">
+    <rule ref="PSR12"/>
+
+    <!-- Vypnutí kontroly komentářů -->
+    <exclude name="Generic.Commenting.FileComment"/>
+    <exclude name="Squiz.Commenting.ClassComment"/>
+    <exclude name="Squiz.Commenting.FunctionComment.MissingReturn"/>
+
+    <file>src</file>
+    <file>tests</file>
+</ruleset>

@@ -13,6 +13,11 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         //
     })
+    ->withCommands(
+        [
+            __DIR__.'/../app/Console/Commands',
+        ]
+    )
     ->withExceptions(function (Exceptions $exceptions) {
         //
     })->create();
