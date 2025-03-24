@@ -12,7 +12,6 @@ use DateTimeImmutable;
 use DateTimeZone;
 
 use function array_intersect_key;
-use function count;
 use function date;
 use function date_parse;
 use function explode;
@@ -48,9 +47,6 @@ class Event implements EventInterface
      */
     private array $skipCondition = [];
 
-    public function __construct()
-    {
-    }
 
     public function cron(string $expression): self
     {
@@ -66,7 +62,7 @@ class Event implements EventInterface
 
     public function everyMinutes(int $minutes): self
     {
-        if ($minutes <= 1 || $minutes >= 59) {
+        if ($minutes <= 0 || $minutes >= 59) {
             throw new InvalidArgumentException('Minutes must be between 1 and 59');
         }
 
@@ -86,6 +82,7 @@ class Event implements EventInterface
 
         return $this->cron('0 */' . $hours . ' * * *');
     }
+
 
     public function on(string $date): self
     {

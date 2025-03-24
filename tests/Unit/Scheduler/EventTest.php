@@ -99,7 +99,7 @@ class EventTest extends TestCase
     public function testFromSetsSkipCondition(): void
     {
         $event = new Event();
-        $datetime = new DateTimeImmutable('+1 day',new DateTimeZone('UTC'));
+        $datetime = new DateTimeImmutable('+1 day', new DateTimeZone('UTC'));
 
         $event->from($datetime->format('Y-m-d H:i:s'));
 
@@ -110,5 +110,4 @@ class EventTest extends TestCase
 
         self::assertTrue($skipConditions[0]($timeZone));
     }
-
 }

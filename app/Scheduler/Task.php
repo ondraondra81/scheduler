@@ -14,7 +14,7 @@ class Task implements TaskInterface
     private string|null $description = null;
 
     /**
-     * @var array<int, callable>
+     * @var array<int, Closure>
      */
     private array $beforeCallbacks = [];
     /**
@@ -90,9 +90,7 @@ class Task implements TaskInterface
         return $this;
     }
 
-    /**
-     * @return array<int, callable>
-     */
+
     public function beforeCallbacks(): array
     {
         return $this->beforeCallbacks;
@@ -105,9 +103,6 @@ class Task implements TaskInterface
         return $this;
     }
 
-    /**
-     * @return array<int, callable>
-     */
     public function afterCallbacks(): array
     {
         return $this->afterCallbacks;

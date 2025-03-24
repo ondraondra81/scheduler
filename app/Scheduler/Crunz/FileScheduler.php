@@ -7,12 +7,14 @@ namespace App\Scheduler\Crunz;
 use App\Scheduler\Contract\Scheduler;
 use App\Scheduler\Contract\Task;
 use Crunz\Schedule;
+use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 use Ramsey\Uuid\Uuid;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Process\Process;
 
-class CrunzSchedulerAdapter implements Scheduler
+class FileScheduler implements Scheduler
 {
     public function __construct(
         private readonly ScheduleFileGenerator $scheduleFileGenerator,

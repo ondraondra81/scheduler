@@ -57,8 +57,10 @@ class TaskTest extends TestCase
 
     public function testBeforeCallbacksCanBeAddedAndRetrieved(): void
     {
-        $callback1 = function () {};
-        $callback2 = function () {};
+        $callback1 = function () {
+        };
+        $callback2 = function () {
+        };
 
         self::assertEmpty($this->task->beforeCallbacks());
 
@@ -71,8 +73,10 @@ class TaskTest extends TestCase
 
     public function testAfterCallbacksCanBeAddedAndRetrieved(): void
     {
-        $callback1 = function () {};
-        $callback2 = function () {};
+        $callback1 = function () {
+        };
+        $callback2 = function () {
+        };
 
         self::assertEmpty($this->task->afterCallbacks());
 
@@ -85,7 +89,8 @@ class TaskTest extends TestCase
 
     public function testSuccessCallbacksCanBeAddedAndRetrieved(): void
     {
-        $callback = function () {};
+        $callback = function () {
+        };
 
         $this->task->onSuccess($callback);
 
@@ -95,7 +100,8 @@ class TaskTest extends TestCase
 
     public function testFailureCallbacksCanBeAddedAndRetrieved(): void
     {
-        $callback = function () {};
+        $callback = function () {
+        };
 
         $this->task->onFailure($callback);
 

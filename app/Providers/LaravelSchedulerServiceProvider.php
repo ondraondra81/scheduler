@@ -12,7 +12,6 @@ use App\Scheduler\Laravel\LaravelSchedulerAdapter;
 use App\Scheduler\TaskLoader;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\ServiceProvider;
 
 class LaravelSchedulerServiceProvider extends ServiceProvider

@@ -8,7 +8,7 @@ use App\Scheduler\Task;
 use Illuminate\Support\Facades\Log;
 
 $event = new Event();
-$event->everyMinutes(3);
+$event->everyMinutes(1);
 
 $command = new Command('app:test-task');
 $command->setParameters(['foo' => 'foobar', '--option']);

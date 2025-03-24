@@ -6,13 +6,48 @@ namespace App\Providers;
 
 use App\Scheduler\Console\Commands\SchedulerRun;
 use App\Scheduler\Contract\Scheduler;
-use App\Scheduler\Crunz\CrunzSchedulerAdapter;
+use App\Scheduler\Crunz\ArtisanScheduler;
+use App\Scheduler\Crunz\BootHandler\ArtisanBootHandler;
+use App\Scheduler\Crunz\BootHandler\FileBootHandler;
+use App\Scheduler\Crunz\Commands\CrunzScheduleList;
+use App\Scheduler\Crunz\Commands\CrunzScheduleRun;
+use App\Scheduler\Crunz\Contract\BootHandler;
+use App\Scheduler\Crunz\CrunzScheduleFactory;
+use App\Scheduler\Crunz\FileScheduler;
+use App\Scheduler\Crunz\ScheduleCollection;
 use App\Scheduler\Crunz\ScheduleFileGenerator;
 use App\Scheduler\Exception\SchedulerException;
+use App\Scheduler\Task;
 use App\Scheduler\TaskLoader;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\File;
+use Crunz\Application\Service\ConfigurationInterface;
+use Crunz\Clock\Clock;
+use Crunz\Clock\ClockInterface;
+use Crunz\Configuration\Configuration;
+use Crunz\Configuration\ConfigurationParser;
+use Crunz\Configuration\ConfigurationParserInterface;
+use Crunz\Configuration\Definition;
+use Crunz\Configuration\FileParser;
+use Crunz\EventRunner;
+use Crunz\Filesystem\Filesystem;
+use Crunz\Filesystem\FilesystemInterface;
+use Crunz\HttpClient\CurlHttpClient;
+use Crunz\HttpClient\HttpClientInterface;
+use Crunz\Invoker;
+use Crunz\Logger\ConsoleLogger;
+use Crunz\Logger\ConsoleLoggerInterface;
+use Crunz\Logger\LoggerFactory;
+use Crunz\Mailer;
+use Crunz\Output\OutputFactory;
+use Crunz\Task\Timezone;
+use Illuminate\Foundation\Application;
+use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\ServiceProvider;
+use Symfony\Component\Config\Definition\Processor;
+use Symfony\Component\Console\Input\ArgvInput;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\Yaml\Yaml;
 
 class CruzSchedulerServiceProvider extends ServiceProvider
 {
@@ -39,82 +74,188 @@ class CruzSchedulerServiceProvider extends ServiceProvider
             }
         );
 
-
-
         $this->app->singleton(
-            Scheduler::class,
-            function ($app) {
-                $crunzDir = config('scheduler.crunz_task_directory', storage_path('crunz'));
-                if (!is_string($crunzDir)) {
-                    throw new SchedulerException('Crunz task directory must be a string.');
-                }
-                return new CrunzSchedulerAdapter(
-                    $app->make(ScheduleFileGenerator::class),
-                    $crunzDir,
-                );
+            ScheduleCollection::class,
+            function () {
+                return new ScheduleCollection();
             }
         );
 
+        $this->registerCrunzDepedency();
+        $this->registerAdapterDepedency();
+
+
+
         $this->commands([
             SchedulerRun::class,
-            ]);
+            CrunzScheduleRun::class,
+            CrunzScheduleList::class,
+        ]);
     }
 
-    public function boot(TaskLoader $taskLoader, Scheduler $scheduler): void
+    public function boot(BootHandler $bootHandler): void
     {
-        $originalTaskDir = config('scheduler.task_directory');
-        if (!is_string($originalTaskDir)) {
-            throw new SchedulerException('Task directory must be a string.');
-        }
-        $crunzTaskDir = config('scheduler.crunz_task_directory', storage_path('crunz'));
-        if (!is_string($crunzTaskDir)) {
-            throw new SchedulerException('Crunz task directory must be a string.');
-        }
-        $hash = $this->getDirectoryHash($originalTaskDir);
-        $cachedHash = Cache::get('task_directory_hash');
+        $bootHandler->boot();
+    }
 
-        $glob = glob($crunzTaskDir . '/*');
-        if ($glob === false) {
-            throw new SchedulerException('Crunz task directory is not readable.');
-        }
-        if (
-            $hash === $cachedHash
-            && count($glob) !== 0
-        ) {
+    private function registerAdapterDepedency(): void
+    {
+        $type = config('scheduler.crunz.type', 'artisan');
+        if ($type === 'artisan') {
+            $this->app->singleton(
+                Scheduler::class,
+                function (Application $app) {
+
+                    return new ArtisanScheduler(
+                        $app->get(ScheduleCollection::class),
+                        $app->make(CrunzScheduleFactory::class),
+                        $app->make(Kernel::class),
+                    );
+                }
+            );
+
+            $this->app->singleton(
+                BootHandler::class,
+                function (Application $app) {
+                    return new ArtisanBootHandler(
+                        $this->app->make(TaskLoader::class),
+                        $app->make(Scheduler::class)
+                    );
+                }
+            );
+
             return;
         }
 
-        Cache::put('task_directory_hash', $hash);
-        $this->prepareTaskDirectory($crunzTaskDir);
+        if ($type === 'file') {
+            $originalTaskDir = config('scheduler.task_directory');
+            if (!is_string($originalTaskDir)) {
+                throw new SchedulerException('Task directory must be a string.');
+            }
+            $crunzTaskDir = config('scheduler.crunz_task_directory', storage_path('crunz'));
+            if (!is_string($crunzTaskDir)) {
+                throw new SchedulerException('Crunz task directory must be a string.');
+            }
 
-        $tasks = $taskLoader->loadTasks();
+            $this->app->singleton(
+                Scheduler::class,
+                function (Application $app) use ($crunzTaskDir) {
+                    return new FileScheduler(
+                        $app->get(ScheduleFileGenerator::class),
+                        $crunzTaskDir,
+                    );
+                }
+            );
 
-        foreach ($tasks as $task) {
-            $scheduler->schedule($task);
+            $this->app->singleton(
+                BootHandler::class,
+                function (Application $app) use ($originalTaskDir, $crunzTaskDir) {
+                    return new FileBootHandler(
+                        $app->get(TaskLoader::class),
+                        $app->get(FileScheduler::class),
+                        $app->get('cache'), //@phpstan-ignore-line
+                        $app->get('files'), //@phpstan-ignore-line
+                        $originalTaskDir,
+                        $crunzTaskDir,
+                    );
+                }
+            );
         }
+
+        throw new SchedulerException('Unsupported crunz scheduler type.');
     }
 
-    private function getDirectoryHash(string $directory): string
+    /**
+     * @return void
+     */
+    private function registerCrunzDepedency(): void
     {
-        $files = glob($directory . '/*.php'); // nebo rekurzivně s RecursiveIterator
-        if ($files === false) {
-            throw new SchedulerException('Task directory is not readable.');
-        }
-        $hashData = [];
+        $this->app->singleton(FilesystemInterface::class, function ($app) {
+            return new Filesystem();
+        });
 
-        foreach ($files as $file) {
-            $hashData[] = $file . '|' . filemtime($file);
-        }
+        $this->app->singleton(InputInterface::class, function () {
+            return new ArgvInput();
+        });
 
-        return md5(implode("\n", $hashData));
-    }
+        $this->app->singleton(OutputInterface::class, function ($app) {
+            $input = $app->make(InputInterface::class);
+            $factory = new OutputFactory($input);
+            return $factory->createOutput();
+        });
 
-    private function prepareTaskDirectory(string $path): void
-    {
-        if (File::exists($path)) {
-            File::deleteDirectory($path);
-        }
+        $this->app->singleton(ConsoleLoggerInterface::class, function ($app) {
+            $input = $app->make(InputInterface::class);
+            $output = $app->make(OutputInterface::class);
+            return new ConsoleLogger(
+                new SymfonyStyle($input, $output)
+            );
+        });
 
-        File::makeDirectory($path, 0755, true);
+        $this->app->singleton(ConfigurationParserInterface::class, function ($app) {
+            return new ConfigurationParser(
+                new Definition(),
+                new Processor(),
+                new FileParser(new Yaml()),
+                $app->make(ConsoleLoggerInterface::class),
+                $app->make(FilesystemInterface::class)
+            );
+        });
+
+        $this->app->singleton(ConfigurationInterface::class, function ($app) {
+            return $app->make(Configuration::class);
+        });
+
+        $this->app->singleton(Configuration::class, function ($app) {
+            return new Configuration(
+                $app->make(ConfigurationParserInterface::class),
+                $app->make(Filesystem::class)  // Odstraněna čárka
+            );
+        });
+
+        $this->app->singleton(Invoker::class, function ($app) {
+            return new Invoker();
+        });
+
+        $this->app->singleton(Mailer::class, function ($app) {
+            return new Mailer(
+                $app->make(ConfigurationInterface::class)
+            );
+        });
+
+        $this->app->singleton(ClockInterface::class, function ($app) {
+            return new Clock();
+        });
+
+        $this->app->singleton(Timezone::class, function ($app) {
+            return new Timezone(
+                $app->make(ConfigurationInterface::class),
+                $app->make(ConsoleLoggerInterface::class)
+            );
+        });
+
+        $this->app->singleton(LoggerFactory::class, function ($app) {
+            return new LoggerFactory(
+                $app->make(ConfigurationInterface::class),
+                $app->make(Timezone::class),
+                $app->make(ConsoleLoggerInterface::class),
+                $app->make(ClockInterface::class)
+            );
+        });
+
+        $this->app->singleton(HttpClientInterface::class, function ($app) {
+            return new CurlHttpClient();
+        });
+
+        $this->app->singleton(EventRunner::class, function ($app) {
+            return new EventRunner(
+                $app->make(Invoker::class),
+                $app->make(ConfigurationInterface::class),
+                $app->make(Mailer::class),
+                $app->make(LoggerFactory::class),
+                $app->make(HttpClientInterface::class),
+                $app->make(ConsoleLoggerInterface::class)
+            );
+        });
     }
 }

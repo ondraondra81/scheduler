@@ -1,4 +1,5 @@
 <?php
+
 // Crunz task generovaný automaticky
 
 use Crunz\Schedule;

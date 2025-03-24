@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Log;
 
 $event = new \App\Scheduler\Event();
-$event->everyMinutes(5);
+$event->everyMinutes(1);
 
 $command = new \App\Scheduler\Command(function (string $foo, string $bar, bool $option, bool $queue) {
     echo(sprintf("Test 3 command foo: %s bar: %s, option: %s, queue: %s", $foo, $bar, $option, $queue));

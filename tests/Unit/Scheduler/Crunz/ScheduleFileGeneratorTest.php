@@ -81,35 +81,37 @@ class ScheduleFileGeneratorTest extends TestCase
     {
 
         /** @var Task $task */
-        $task = include __DIR__ .'/_data/artisanTask.php';;
+        $task = include __DIR__ . '/_data/artisanTask.php';
+        ;
 
         $generator = new ScheduleFileGenerator();
         $phpCode = $generator->generateFileContent($task);
 
-        $this->assertStringEqualsFile(__DIR__ .'/_data/artisanCrunz.php', $phpCode);
+        $this->assertStringEqualsFile(__DIR__ . '/_data/artisanCrunz.php', $phpCode);
     }
 
     public function testGenerateFromRealTaskFileWithShellCommand()
     {
 
         /** @var Task $task */
-        $task = include __DIR__ .'/_data/shellTask.php';;
+        $task = include __DIR__ . '/_data/shellTask.php';
+        ;
 
         $generator = new ScheduleFileGenerator();
         $phpCode = $generator->generateFileContent($task);
 
-        $this->assertStringEqualsFile(__DIR__ .'/_data/shellCrunz.php', $phpCode);
+        $this->assertStringEqualsFile(__DIR__ . '/_data/shellCrunz.php', $phpCode);
     }
 
     public function testGenerateFromRealTaskFileWithClosureCommand()
     {
 
         /** @var Task $task */
-        $task = include __DIR__ .'/_data/closureTask.php';;
+        $task = include __DIR__ . '/_data/closureTask.php';
+        ;
 
         $generator = new ScheduleFileGenerator();
         $phpCode = $generator->generateFileContent($task);
-        $this->assertStringEqualsFile(__DIR__ .'/_data/closureCrunz.php', $phpCode);
+        $this->assertStringEqualsFile(__DIR__ . '/_data/closureCrunz.php', $phpCode);
     }
 }
-

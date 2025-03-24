@@ -6,6 +6,6 @@
     <exclude name="Squiz.Commenting.ClassComment"/>
     <exclude name="Squiz.Commenting.FunctionComment.MissingReturn"/>
 
-    <file>src</file>
+    <file>app</file>
     <file>tests</file>
 </ruleset>
