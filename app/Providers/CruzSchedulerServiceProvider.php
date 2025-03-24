@@ -74,16 +74,7 @@ class CruzSchedulerServiceProvider extends ServiceProvider
             }
         );
 
-        $this->app->singleton(
-            ScheduleCollection::class,
-            function () {
-                return new ScheduleCollection();
-            }
-        );
-
-        $this->registerCrunzDepedency();
         $this->registerAdapterDepedency();
-
 
 
         $this->commands([
@@ -102,6 +93,14 @@ class CruzSchedulerServiceProvider extends ServiceProvider
     {
         $type = config('scheduler.crunz.type', 'artisan');
         if ($type === 'artisan') {
+
+            $this->app->singleton(
+                ScheduleCollection::class,
+                function () {
+                    return new ScheduleCollection();
+                }
+            );
+
             $this->app->singleton(
                 Scheduler::class,
                 function (Application $app) {
@@ -123,6 +122,8 @@ class CruzSchedulerServiceProvider extends ServiceProvider
                     );
                 }
             );
+
+            $this->registerCrunzDepedency();
 
             return;
         }
@@ -160,6 +161,8 @@ class CruzSchedulerServiceProvider extends ServiceProvider
                     );
                 }
             );
+
+            return;
         }
 
         throw new SchedulerException('Unsupported crunz scheduler type.');
